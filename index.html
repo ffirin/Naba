@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kasir & Cetak Struk - KEDAI TERAS</title>
+    <!-- Library Tesseract.js untuk membaca teks dari gambar/screenshot -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --border-color: #cbd5e1;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); padding: 10px; line-height: 1.4; }
+        .container { max-width: 480px; margin: 0 auto; background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 20px; }
+        header { background: var(--primary); color: white; padding: 15px; text-align: center; position: relative; }
+        header h1 { font-size: 1.1rem; font-weight: 700; margin-bottom: 3px; }
+        header p { font-size: 0.8rem; opacity: 0.9; }
+        .settings-btn { position: absolute; right: 15px; top: 15px; background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+        .content { padding: 15px; }
+        .section-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; color: #475569; display: flex; justify-content: space-between; align-items: center; }
+        .grid-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
+        .menu-btn { padding: 10px; background: #f1f5f9; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: #334155; cursor: pointer; text-align: center; transition: all 0.2s; }
+        .menu-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        /* Style Tab Mode Input (Manual vs Screenshot) */
+        .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #e2e8f0; padding: 4px; border-radius: 8px; margin-bottom: 15px; }
+        .mode-tab { padding: 8px; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; background: transparent; color: #475569; transition: all 0.2s; }
+        .mode-tab.active { background: #ffffff; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+        /* Area Upload Screenshot */
+        .screenshot-box { background: #f0f9ff; border: 2px dashed #38bdf8; border-radius: 8px; padding: 12px; margin-bottom: 15px; text-align: center; }
+        .screenshot-box label.upload-label { display: inline-block; background: #0284c7; color: white; padding: 8px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; margin-bottom: 6px; }
+        .screenshot-box input[type="file"] { display: none; }
+        .preview-img { max-width: 100%; max-height: 200px; border-radius: 6px; margin-top: 8px; border: 1px solid var(--border-color); }
+        .ocr-status { font-size: 0.75rem; color: #0369a1; margin-top: 6px; font-weight: 600; }
+        .raw-ocr-box { width: 100%; height: 70px; font-size: 0.7rem; margin-top: 8px; background: #fff; border: 1px solid #bae6fd; padding: 6px; border-radius: 4px; color: #334155; }
+
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 4px; color: #475569; }
+        input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; outline: none; background: #fff; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
+        .btn { width: 100%; padding: 10px; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-align: center; margin-top: 5px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-whatsapp { background: #25d366; color: white; margin-top: 8px; }
+        .btn-secondary { background: #64748b; color: white; padding: 6px 10px; font-size: 0.75rem; margin-top: 5px; }
+        .btn-danger { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+        .item-row { background: #f8fafc; border: 1px solid var(--border-color); padding: 10px; border-radius: 8px; margin-bottom: 8px; position: relative; }
+        
+        /* PREVIEW STRUK DENGAN EFEK TEBAL (HITAM PEKAT) */
+        .receipt-preview { 
+            background: #fff; 
+            border: 1px dashed var(--border-color); 
+            padding: 12px; 
+            font-family: 'Courier New', Courier, monospace; 
+            font-size: 0.8rem; 
+            font-weight: 900; /* Dibuat sangat tebal di layar */
+            color: #000000; /* Warna hitam legam */
+            white-space: pre-wrap; 
+            margin-top: 15px; 
+            border-radius: 6px; 
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; padding: 15px; z-index: 100; }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; width: 100%; max-width: 400px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1 id="shopNameHeader">KEDAI TERAS</h1>
+        <p id="shopAddressHeader">Taman Sari Tawang harjo Purwodadi</p>
+        <button class="settings-btn" onclick="openSettings()">⚙️ Toko</button>
+    </header>
+
+    <div class="content">
+        <!-- PILIHAN JENIS TRANSAKSI -->
+        <div class="section-title">1. Pilih Jenis Transaksi</div>
+        <div class="grid-menu">
+            <button class="menu-btn active" onclick="setCategory('Makanan', this)">Makanan</button>
+            <button class="menu-btn" onclick="setCategory('listrik', this)">Minuman</button>
+            <button class="menu-btn" onclick="setCategory('token', this)">Token Listrik</button>
+            <button class="menu-btn" onclick="setCategory('pascabayar', this)">Listrik Pasca Bayar</button>
+            <button class="menu-btn" onclick="setCategory('transfer', this)" style="grid-column: span 2;">Transfer Bank / E-Wallet</button>
+        </div>
+
+        <!-- PILIHAN METODE INPUT (MANUAL VS SCREENSHOT) -->
+        <div class="section-title">2. Metode Input Data</div>
+        <div class="mode-tabs">
+            <button type="button" class="mode-tab active" id="tabManual" onclick="setInputMode('manual')">✍️ Input Manual</button>
+            <button type="button" class="mode-tab" id="tabScreenshot" onclick="setInputMode('screenshot')">📸 Ambil dari Screenshot</button>
+        </div>
+
+        <!-- KOLOM AMBIL DATA DARI SCREENSHOT -->
+        <div id="screenshotSection" class="screenshot-box hidden">
+            <label for="screenshotInput" class="upload-label">📁 Pilih / Unggah Gambar Screenshot</label>
+            <input type="file" id="screenshotInput" accept="image/*" onchange="processScreenshot(event)">
+            <p style="font-size: 0.72rem; color: #475569;">Unggah bukti transfer, token listrik, atau struk digital untuk mengisi kolom otomatis.</p>
+            
+            <img id="screenshotPreview" class="preview-img hidden" alt="Preview Screenshot">
+            <div id="ocrStatus" class="ocr-status"></div>
+            
+            <div id="rawOcrContainer" class="hidden" style="text-align: left; margin-top: 8px;">
+                <label style="font-size: 0.7rem; color: #0369a1;">Teks Terbaca dari Gambar (Bisa disalin jika perlu):</label>
+                <textarea id="rawOcrText" class="raw-ocr-box" readonly></textarea>
+            </div>
+        </div>
+
+        <!-- KOLOM INPUT TRANSAKSI MANUAL / HASIL EKSTRAKSI -->
+        <div class="section-title">3. Detail Data Transaksi</div>
+        <div class="form-group">
+            <label>Nama Pembeli / Pelanggan</label>
+            <input type="text" id="buyerName" placeholder="Contoh: Bpk. Budi">
+        </div>
+
+        <!-- FORM DINAMIS BERDASARKAN KATEGORI -->
+        <div id="dynamicForm"></div>
+
+        <div class="form-group">
+            <label>Metode Pembayaran</label>
+            <select id="payMethod">
+                <option value="TUNAI">Tunai (Cash)</option>
+                <option value="TRANSFER">Transfer / QRIS</option>
+            </select>
+        </div>
+
+        <button class="btn btn-primary" onclick="generateReceipt()">🖨️ Buat Struk / Nota</button>
+
+        <!-- HASIL STRUK -->
+        <div id="receiptResult" class="hidden">
+            <div class="section-title" style="margin-top: 15px;">Hasil Struk Cetak</div>
+            <div id="receiptText" class="receipt-preview"></div>
+            <button class="btn btn-primary" onclick="printReceipt()">Cetak ke Printer Bluetooth</button>
+            <button class="btn btn-whatsapp" onclick="sendWhatsApp()">📱 Kirim via WhatsApp</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PENGATURAN TOKO -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-bottom: 12px; font-size: 1rem;">Pengaturan Toko</h3>
+        <div class="form-group">
+            <label>Nama Toko</label>
+            <input type="text" id="inputShopName" value="KEDAI TERAS">
+        </div>
+        <div class="form-group">
+            <label>Alamat Toko</label>
+            <input type="text" id="inputShopAddress" value="Taman Sari Tawang Harjo Purwodadi">
+        </div>
+        <div class="form-group">
+            <label>No HP / WhatsApp</label>
+            <input type="text" id="inputShopPhone" value="08895867931">
+        </div>
+        <!-- TAMBAHAN OPSI KEPADATAN CETAK (HITAM PEKAT) -->
+        <div class="form-group">
+            <label>Kepadatan Cetak Thermal (Ketebalan)</label>
+            <select id="printDensity">
+                <option value="normal">Normal (Standar)</option>
+                <option value="dark" selected>Hitam Pekat (Bold)</option>
+                <option value="extradark">Sangat Pekat (Double Bold)</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" onclick="saveSettings()">Simpan Pengaturan</button>
+    </div>
+</div>
+
+<script>
+    let currentCategory = 'Makanan';
+    let currentInputMode = 'manual';
+    let shopInfo = {
+        name: "KEDAI TERAS",
+        address: "Taman Sari Tawang Harjo Purwodadi",
+        phone: "08895867931",
+        density: "dark"
+    };
+
+    function setInputMode(mode) {
+        currentInputMode = mode;
+        document.getElementById('tabManual').classList.toggle('active', mode === 'manual');
+        document.getElementById('tabScreenshot').classList.toggle('active', mode === 'screenshot');
+        
+        const ssSection = document.getElementById('screenshotSection');
+        if (mode === 'screenshot') {
+            ssSection.classList.remove('hidden');
+        } else {
+            ssSection.classList.add('hidden');
+        }
+    }
+
+    function setCategory(cat, element) {
+        currentCategory = cat;
+        document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+        element.classList.add('active');
+        renderForm();
+    }
+
+    function getDefaultDateTime() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    function renderForm() {
+        const container = document.getElementById('dynamicForm');
+        let html = '';
+
+        if (currentCategory === 'Makanan' || currentCategory === 'listrik') {
+            html = `
+                <div class="section-title">Daftar Barang / Produk</div>
+                <div id="itemListContainer"></div>
+                <button type="button" class="btn btn-secondary" onclick="addItemRow()">+ Tambah Baris Barang</button>
+            `;
+            container.innerHTML = html;
+            addItemRow();
+        } else if (currentCategory === 'token') {
+            html = `
+                <div class="form-group">
+                    <label>Tanggal & Jam Transaksi</label>
+                    <input type="datetime-local" id="trxDateTime" value="${getDefaultDateTime()}">
+                </div>
+                <div class="form-group">
+                    <label>Nomor Meter / ID Pelanggan</label>
+                    <input type="text" id="meterNo" placeholder="140xxxxxxxx">
+                </div>
+                <div class="form-group">
+                    <label>Nominal Token (Rp)</label>
+                    <select id="tokenNominal">
+                        <option value="20000">Rp 20.000</option>
+                        <option value="50000">Rp 50.000</option>
+                        <option value="100000">Rp 100.000</option>
+                        <option value="200000">Rp 200.000</option>
+                        <option value="500000">Rp 500.000</option>
+                        <option value="1000000">Rp 1.000.000</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nomor Stroom / Token (20 Digit)</label>
+                    <input type="text" id="stroomCode" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX">
+                </div>
+                <div class="form-group">
+                    <label>Biaya Admin (Rp)</label>
+                    <input type="number" id="adminFee" value="3000">
+                </div>
+            `;
+            container.innerHTML = html;
+        } else if (currentCategory === 'pascabayar') {
+            html = `
+                <div class="form-group">
+                    <label>ID Pelanggan / No Meter</label>
+                    <input type="text" id="postNo" placeholder="534xxxxxxxx">
+                </div>
+                <div class="form-group">
+                    <label>Bulan Tagihan</label>
+                    <input type="text" id="postPeriod" placeholder="Contoh: OKTOBER 2026">
+                </div>
+                <div class="form-group">
+                    <label>Total Tagihan / Tag PLN (Rp)</label>
+                    <input type="number" id="postAmount" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Admin Bank / Toko (Rp)</label>
+                    <input type="number" id="postAdmin" value="3000">
+                </div>
+            `;
+            container.innerHTML = html;
+        } else if (currentCategory === 'transfer') {
+            html = `
+                <div class="form-group">
+                    <label>Tanggal & Jam Transaksi</label>
+                    <input type="datetime-local" id="trxDateTime" value="${getDefaultDateTime()}">
+                </div>
+                <div class="form-group">
+                    <label>Sumber Dana Pengirim</label>
+                    <select id="senderSource">
+                        <option value="BRI / BRImo">BRI / BRImo</option>
+                        <option value="SeaBank">SeaBank</option>
+                        <option value="DANA">DANA</option>
+                        <option value="BCA">BCA</option>
+                        <option value="Mandiri">Mandiri</option>
+                        <option value="BNI">BNI</option>
+                        <option value="OVO">OVO</option>
+                        <option value="GoPay">GoPay</option>
+                        <option value="ShopeePay">ShopeePay</option>
+                        <option value="Kas Toko">Kas Toko</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nama Pengirim</label>
+                    <input type="text" id="senderName" placeholder="Contoh: KEDAI TERAS">
+                </div>
+                <div class="form-group">
+                    <label>Tujuan Bank / E-Wallet</label>
+                    <select id="bankTarget">
+                        <option value="BRI">BRI / BRImo</option>
+                        <option value="SEABANK">SeaBank</option>
+                        <option value="DANA">DANA</option>
+                        <option value="BCA">BCA</option>
+                        <option value="MANDIRI">Mandiri</option>
+                        <option value="BNI">BNI</option>
+                        <option value="OVO">OVO</option>
+                        <option value="GOPAY">GoPay</option>
+                        <option value="SHOPEEPAY">ShopeePay</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nomor Rekening / No HP Tujuan</label>
+                    <input type="text" id="accNumber" placeholder="Nomor tujuan...">
+                </div>
+                <div class="form-group">
+                    <label>Nama Pemilik Rekening (Penerima)</label>
+                    <input type="text" id="accName" placeholder="Nama penerima...">
+                </div>
+                <div class="form-group">
+                    <label>Nominal Transfer (Rp)</label>
+                    <input type="number" id="transferAmount" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Biaya Admin Transfer (Rp)</label>
+                    <input type="number" id="transferAdmin" value="2500">
+                </div>
+            `;
+            container.innerHTML = html;
+        }
+    }
+
+    // PROSES MEMBACA SCREENSHOT DENGAN OCR (TESSERACT.JS)
+    async function processScreenshot(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const previewImg = document.getElementById('screenshotPreview');
+        const statusEl = document.getElementById('ocrStatus');
+        const rawContainer = document.getElementById('rawOcrContainer');
+        const rawTextEl = document.getElementById('rawOcrText');
+
+        previewImg.src = URL.createObjectURL(file);
+        previewImg.classList.remove('hidden');
+        statusEl.innerText = "⏳ Sedang membaca teks dari screenshot (0%)...";
+        rawContainer.classList.add('hidden');
+
+        try {
+            const result = await Tesseract.recognize(file, 'ind+eng', {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        const pct = Math.round(m.progress * 100);
+                        statusEl.innerText = `⏳ Membaca teks screenshot... ${pct}%`;
+                    }
+                }
+            });
+
+            const text = result.data.text;
+            rawTextEl.value = text;
+            rawContainer.classList.remove('hidden');
+            statusEl.innerText = "✅ Selesai! Data otomatis diisikan ke kolom di bawah (silakan cek kembali).";
+
+            autoFillFromOCR(text);
+        } catch (err) {
+            console.error(err);
+            statusEl.innerText = "❌ Gagal membaca gambar. Silakan isi manual.";
+        }
+    }
+
+    function autoFillFromOCR(text) {
+        const cleanText = text.replace(/\r/g, '');
+        const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+        const moneyMatches = cleanText.match(/(?:Rp\.?\s*)?(\d{1,3}(?:[.,]\d{3})+)/gi);
+        let parsedAmounts = [];
+        if (moneyMatches) {
+            parsedAmounts = moneyMatches.map(m => {
+                const digits = m.replace(/[^\d]/g, '');
+                return parseInt(digits, 10);
+            }).filter(n => n >= 1000 && n <= 100000000);
+        }
+
+        if (currentCategory === 'token') {
+            const stroomMatch = cleanText.match(/(\d{4}[\s-]\d{4}[\s-]\d{4}[\s-]\d{4}[\s-]\d{4})/);
+            if (stroomMatch && document.getElementById('stroomCode')) {
+                document.getElementById('stroomCode').value = stroomMatch[1].replace(/\s+/g, '-');
+            }
+
+            const meterMatch = cleanText.match(/\b(\d{11,12})\b/);
+            if (meterMatch && document.getElementById('meterNo')) {
+                document.getElementById('meterNo').value = meterMatch[1];
+            }
+
+            const validTokens = [20000, 50000, 100000, 200000, 500000, 1000000];
+            const foundToken = parsedAmounts.find(a => validTokens.includes(a));
+            if (foundToken && document.getElementById('tokenNominal')) {
+                document.getElementById('tokenNominal').value = String(foundToken);
+            }
+        } else if (currentCategory === 'pascabayar') {
+            const idPelMatch = cleanText.match(/\b(\d{12})\b/);
+            if (idPelMatch && document.getElementById('postNo')) {
+                document.getElementById('postNo').value = idPelMatch[1];
+            }
+
+            const periodMatch = cleanText.match(/\b(JAN|FEB|MAR|APR|MEI|JUN|JUL|AGU|AGS|SEP|OKT|NOV|DES)[A-Z]*\s*\d{2,4}\b/i);
+            if (periodMatch && document.getElementById('postPeriod')) {
+                document.getElementById('postPeriod').value = periodMatch[0].toUpperCase();
+            }
+
+            if (parsedAmounts.length > 0 && document.getElementById('postAmount')) {
+                document.getElementById('postAmount').value = parsedAmounts[0];
+            }
+        } else if (currentCategory === 'transfer') {
+            const upperText = cleanText.toUpperCase();
+            const bankSelect = document.getElementById('bankTarget');
+            if (bankSelect) {
+                if (upperText.includes('SEABANK')) bankSelect.value = 'SEABANK';
+                else if (upperText.includes('DANA')) bankSelect.value = 'DANA';
+                else if (upperText.includes('BCA')) bankSelect.value = 'BCA';
+                else if (upperText.includes('MANDIRI')) bankSelect.value = 'MANDIRI';
+                else if (upperText.includes('BNI')) bankSelect.value = 'BNI';
+                else if (upperText.includes('OVO')) bankSelect.value = 'OVO';
+                else if (upperText.includes('GOPAY')) bankSelect.value = 'GOPAY';
+                else if (upperText.includes('SHOPEEPAY')) bankSelect.value = 'SHOPEEPAY';
+                else if (upperText.includes('BRI')) bankSelect.value = 'BRI';
+            }
+
+            const accMatch = cleanText.match(/\b(\d{8,16})\b/);
+            if (accMatch && document.getElementById('accNumber')) {
+                document.getElementById('accNumber').value = accMatch[1];
+            }
+
+            for (let i = 0; i < lines.length; i++) {
+                if (/^(pengirim|nama pengirim|dari|sumber)[:\s]*/i.test(lines[i])) {
+                    const inlineSender = lines[i].replace(/^(pengirim|nama pengirim|dari|sumber)[:\s]*/i, '').trim();
+                    if (inlineSender.length > 2 && document.getElementById('senderName')) {
+                        document.getElementById('senderName').value = inlineSender;
+                        break;
+                    } else if (lines[i + 1] && document.getElementById('senderName')) {
+                        document.getElementById('senderName').value = lines[i + 1];
+                        break;
+                    }
+                }
+            }
+
+            for (let i = 0; i < lines.length; i++) {
+                if (/^(penerima|tujuan|ke|nama penerima)[:\s]*/i.test(lines[i])) {
+                    const inlineName = lines[i].replace(/^(penerima|tujuan|ke|nama penerima)[:\s]*/i, '').trim();
+                    if (inlineName.length > 2 && document.getElementById('accName')) {
+                        document.getElementById('accName').value = inlineName;
+                        break;
+                    } else if (lines[i + 1] && document.getElementById('accName')) {
+                        document.getElementById('accName').value = lines[i + 1];
+                        break;
+                    }
+                }
+            }
+
+            if (parsedAmounts.length > 0 && document.getElementById('transferAmount')) {
+                document.getElementById('transferAmount').value = parsedAmounts[0];
+            }
+        } else if (currentCategory === 'Makanan' || currentCategory === 'listrik') {
+            const firstRowName = document.querySelector('.row-item-name');
+            const firstRowPrice = document.querySelector('.row-item-price');
+            if (firstRowName && lines.length > 0) {
+                firstRowName.value = lines[0];
+            }
+            if (firstRowPrice && parsedAmounts.length > 0) {
+                firstRowPrice.value = parsedAmounts[0];
+            }
+        }
+    }
+
+    function addItemRow() {
+        const listContainer = document.getElementById('itemListContainer');
+        if (!listContainer) return;
+        const rowId = Date.now() + Math.random();
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'item-row';
+        rowDiv.setAttribute('data-id', rowId);
+        rowDiv.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <label style="margin-bottom:0;">Item Barang</label>
+                <button type="button" class="btn-danger" onclick="removeItemRow(this)">Hapus</button>
+            </div>
+            <div class="form-group" style="margin-bottom:6px;">
+                <input type="text" class="row-item-name" placeholder="${currentCategory === 'Makanan' ? 'Contoh: Sewa Tenda' : 'Contoh: Kabel NYM'}">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>Jumlah (Qty)</label>
+                    <input type="number" class="row-item-qty" value="1" min="1">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>Harga Satuan (Rp)</label>
+                    <input type="number" class="row-item-price" placeholder="0">
+                </div>
+            </div>
+        `;
+        listContainer.appendChild(rowDiv);
+    }
+
+    function removeItemRow(button) {
+        const row = button.closest('.item-row');
+        const listContainer = document.getElementById('itemListContainer');
+        if (listContainer.querySelectorAll('.item-row').length > 1) {
+            row.remove();
+        } else {
+            alert('Minimal harus ada 1 baris barang!');
+        }
+    }
+
+    function openSettings() { document.getElementById('settingsModal').style.display = 'flex'; }
+    function saveSettings() {
+        shopInfo.name = document.getElementById('inputShopName').value;
+        shopInfo.address = document.getElementById('inputShopAddress').value;
+        shopInfo.phone = document.getElementById('inputShopPhone').value;
+        shopInfo.density = document.getElementById('printDensity').value;
+        document.getElementById('shopNameHeader').innerText = shopInfo.name;
+        document.getElementById('shopAddressHeader').innerText = shopInfo.address;
+        document.getElementById('settingsModal').style.display = 'none';
+    }
+
+    function formatCustomDate(dateTimeVal) {
+        if (!dateTimeVal) {
+            const now = new Date();
+            return now.toLocaleDateString('id-ID') + ' ' + now.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+        }
+        const d = new Date(dateTimeVal);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+    }
+
+    function generateReceipt() {
+        const buyer = document.getElementById('buyerName').value || 'Umum';
+        const now = new Date();
+        const defaultDateStr = now.toLocaleDateString('id-ID') + ' ' + now.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+        let receiptText = "";
+
+        receiptText += `   ${shopInfo.name.toUpperCase()}\n`;
+        receiptText += ` ${shopInfo.address}\n`;
+        receiptText += ` Telp: ${shopInfo.phone}\n`;
+        receiptText += `--------------------------------\n`;
+
+        if (currentCategory === 'Makanan' || currentCategory === 'listrik') {
+            receiptText += `Tgl : ${defaultDateStr}\n`;
+            receiptText += `Pelanggan: ${buyer}\n`;
+            receiptText += `--------------------------------\n`;
+
+            const rows = document.querySelectorAll('.item-row');
+            let grandTotal = 0;
+
+            rows.forEach((row, idx) => {
+                const name = row.querySelector('.row-item-name').value || `Barang ${idx+1}`;
+                const qty = parseFloat(row.querySelector('.row-item-qty').value) || 1;
+                const price = parseFloat(row.querySelector('.row-item-price').value) || 0;
+                const total = qty * price;
+                grandTotal += total;
+
+                receiptText += `${name}\n`;
+                receiptText += `${qty} x ${price.toLocaleString('id-ID')} = Rp ${total.toLocaleString('id-ID')}\n`;
+            });
+
+            receiptText += `--------------------------------\n`;
+            receiptText += `TOTAL BAYAR : Rp ${grandTotal.toLocaleString('id-ID')}\n`;
+        } else if (currentCategory === 'token') {
+            const inputDt = document.getElementById('trxDateTime').value;
+            const trxDate = formatCustomDate(inputDt);
+            const meter = document.getElementById('meterNo').value || '-';
+            const nominal = parseFloat(document.getElementById('tokenNominal').value) || 0;
+            const admin = parseFloat(document.getElementById('adminFee').value) || 0;
+            const stroom = document.getElementById('stroomCode').value || '1234-5678-9012-3456-7890';
+            const total = nominal + admin;
+
+            receiptText += `Tgl : ${trxDate}\n`;
+            receiptText += `Pelanggan: ${buyer}\n`;
+            receiptText += `--------------------------------\n`;
+            receiptText += `TOKEN LISTRIK PRABAYAR\n`;
+            receiptText += `No Meter : ${meter}\n`;
+            receiptText += `Nominal  : Rp ${nominal.toLocaleString('id-ID')}\n`;
+            receiptText += `Admin    : Rp ${admin.toLocaleString('id-ID')}\n`;
+            receiptText += `--------------------------------\n`;
+            receiptText += `TOTAL    : Rp ${total.toLocaleString('id-ID')}\n`;
+            receiptText += `--------------------------------\n`;
+            receiptText += `KODE STROOM / TOKEN:\n`;
+            receiptText += `${stroom}\n`;
+        } else if (currentCategory === 'pascabayar') {
+            receiptText += `Tgl : ${defaultDateStr}\n`;
+            receiptText += `Pelanggan: ${buyer}\n`;
+            receiptText += `--------------------------------\n`;
+            const no = document.getElementById('postNo').value || '-';
+            const period = document.getElementById('postPeriod').value || '-';
+            const amount = parseFloat(document.getElementById('postAmount').value) || 0;
+            const admin = parseFloat(document.getElementById('postAdmin').value) || 0;
+            const total = amount + admin;
+
+            receiptText += `LISTRIK PASCA BAYAR\n`;
+            receiptText += `ID Pel  : ${no}\n`;
+            receiptText += `Periode : ${period}\n`;
+            receiptText += `Tagihan : Rp ${amount.toLocaleString('id-ID')}\n`;
+            receiptText += `Admin   : Rp ${admin.toLocaleString('id-ID')}\n`;
+            receiptText += `--------------------------------\n`;
+            receiptText += `TOTAL   : Rp ${total.toLocaleString('id-ID')}\n`;
+        } else if (currentCategory === 'transfer') {
+            const inputDt = document.getElementById('trxDateTime').value;
+            const trxDate = formatCustomDate(inputDt);
+            const senderSource = document.getElementById('senderSource').value || '-';
+            const senderName = document.getElementById('senderName').value || '-';
+            const bank = document.getElementById('bankTarget').value;
+            const accNo = document.getElementById('accNumber').value || '-';
+            const accName = document.getElementById('accName').value || '-';
+            const amount = parseFloat(document.getElementById('transferAmount').value) || 0;
+            const admin = parseFloat(document.getElementById('transferAdmin').value) || 0;
+            const total = amount + admin;
+
+            receiptText += `Tgl : ${trxDate}\n`;
+            receiptText += `Pelanggan: ${buyer}\n`;
+            receiptText += `--------------------------------\n`;
+            receiptText += `TRANSFER ${bank.toUpperCase()}\n`;
+            receiptText += `Sumber  : ${senderSource}\n`;
+            receiptTextasiun = senderName; // (fix assign)
+            receiptText += `Pengirim: ${senderName}\n`;
+            receiptText += `No Rek  : ${accNo}\n`;
+            receiptText += `Penerima: ${accName}\n`;
+            receiptText += `Nominal : Rp ${amount.toLocaleString('id-ID')}\n`;
+            receiptText += `Admin   : Rp ${admin.toLocaleString('id-ID')}\n`;
+            receiptText += `--------------------------------\n`;
+            receiptText += `TOTAL   : Rp ${total.toLocaleString('id-ID')}\n`;
+        }
+
+        receiptText += `--------------------------------\n`;
+        receiptText += ` Terimakasih Atas Kunjungan Anda\n`;
+        receiptText += ` Barang yang sudah dibeli/disewa\n`;
+        receiptText += `   tidak dapat dikembalikan\n`;
+
+        document.getElementById('receiptText').innerText = receiptText;
+        document.getElementById('receiptResult').classList.remove('hidden');
+    }
+
+    function printReceipt() {
+        const text = document.getElementById('receiptText').innerText;
+        const win = window.open('', '', 'height=500,width=400');
+        
+        // CSS Tambahan khusus area cetak agar hasilnya hitam legam dan tebal (Bold)
+        let boldStyle = 'font-family: monospace; font-size: 13px; font-weight: 900; color: #000; -webkit-print-color-adjust: exact;';
+        if(shopInfo.density === 'extradark') {
+            boldStyle = 'font-family: monospace; font-size: 13px; font-weight: 900; color: #000; text-shadow: 0px 0px 1px #000, 0px 0px 1px #000; -webkit-print-color-adjust: exact;';
+        }
+
+        win.document.write(`
+            <html>
+                <head><title>Cetak Struk</title></head>
+                <body onload="window.print(); window.close();">
+                    <pre style="${boldStyle}">${text}</pre>
+                </body>
+            </html>
+        `);
+        win.document.close();
+    }
+
+    function sendWhatsApp() {
+        const text = document.getElementById('receiptText').innerText;
+        const encoded = encodeURIComponent(text);
+        window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+    }
+
+    window.onload = function() {
+        renderForm();
+    };
+</script>
+
+</body>
+</html>
