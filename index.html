@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kasir & Cetak Struk - KEDAI TERAS</title>
+    <link rel="manifest" href="manifest.json">
     <!-- Library Tesseract.js untuk membaca teks dari gambar/screenshot -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
@@ -661,7 +662,7 @@
         win.document.write(`
             <html>
                 <head><title>Cetak Struk</title></head>
-                <link rel="manifest" href="manifest.json">
+          
                 <body onload="window.print(); window.close();">
                     <pre style="${boldStyle}">${text}</pre>
                 </body>
